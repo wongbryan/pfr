@@ -1,32 +1,16 @@
 const { timezone, rules } = require("../config");
 const { CronJob } = require("cron");
+const https = require("https");
 
-const getRandomInt = (min, max) => {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min) + min);
+const options = {
+  hostname: "meme-api.herokuapp.com",
+  path: "/gimme/wholesomememes",
+  method: "GET",
 };
 
 class CronBot {
-  constructor(client, rule) {
+  constructor(client) {
     this.client = client;
-    this.rule = rule;
-  }
-
-  applyPolicyToList(policy, list) {
-    if (!policy || !list || list.length === 0) {
-      return [];
-    }
-
-    switch (policy) {
-      case "all":
-        return list;
-      case "random":
-        return [list[getRandomInt(0, list.length)]];
-      case "single":
-      default:
-        return [list[0]];
-    }
   }
 
   async getWebhook(channelId) {
@@ -38,43 +22,49 @@ class CronBot {
       : webhooks.first();
   }
 
-  sendMessages() {
-    const channelIds = this.applyPolicyToList(
-      this.rule.channelPolicy,
-      this.rule.channelIds
-    );
-    const messages = this.applyPolicyToList(
-      this.rule.messagePolicy,
-      this.rule.messages
-    );
-    const reactions = this.applyPolicyToList(
-      this.rule.reactionPolicy,
-      this.rule.reactions
-    );
-
-    channelIds.forEach(async (channelId) => {
-      const webhook = await this.getWebhook(channelId);
-
-      messages.forEach(async (message) => {
-        const newMessage = await webhook.send(message);
-
-        reactions.forEach(async (reaction) => await newMessage.react(reaction));
-      });
-    });
+  async sendMessage(channelId, message) {
+    const webhook = await this.getWebhook(channelId);
+    const newMessage = await webhook.send(message);
   }
 }
 
 module.exports = async (client) => {
-  console.log("cron: ready");
+  const cronExpression = "0 0 0/1 * * *";
+  const bot = new CronBot(client);
+  new CronJob(
+    cronExpression,
+    async () => {
+      https
+        .get("https://meme-api.herokuapp.com/gimme/wholesomememes", (res) => {
+          let data = [];
+          const headerDate =
+            res.headers && res.headers.date
+              ? res.headers.date
+              : "no response date";
+          console.log("Status Code:", res.statusCode);
+          console.log("Date in Response header:", headerDate);
 
-  rules.forEach((rule) => {
-    const bot = new CronBot(client, rule);
-    new CronJob(
-      rule.cronExpression,
-      () => bot.sendMessages(),
-      null,
-      true,
-      timezone
-    );
-  });
+          res.on("data", (chunk) => {
+            data.push(chunk);
+          });
+
+          res.on("end", async () => {
+            console.log("Response ended: ");
+            const json = JSON.parse(Buffer.concat(data).toString());
+            const memeURL = json["url"];
+            await bot.sendMessage(
+              "865495139187032074",
+              "<:helloeverybunny:837449515559551056>"
+            );
+            await bot.sendMessage("865495139187032074", memeURL);
+          });
+        })
+        .on("error", (err) => {
+          console.log("Error: ", err.message);
+        });
+    },
+    null,
+    true,
+    timezone
+  );
 };
