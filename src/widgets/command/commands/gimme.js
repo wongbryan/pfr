@@ -39,7 +39,7 @@ const google = new Scraper({
 
 const searchCache = new NodeCache({ stdTTL: 0, checkperiod: 0 });
 
-const QUERY_LIMIT = 500;
+const QUERY_LIMIT = 300;
 
 module.exports = new CommandBuilder()
   .setAliases(["g", "gimme"])
@@ -54,6 +54,10 @@ module.exports = new CommandBuilder()
     const query = args.join(" ");
     let results;
     if (searchCache.get(query) == null) {
+      await message.channel.send(
+        "<:helloeverybunny:837449515559551056> Please wait, I'm getting you your" +
+          query
+      );
       results = await google.scrape(query, QUERY_LIMIT);
       searchCache.set(query, results);
     } else {
