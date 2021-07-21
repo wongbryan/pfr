@@ -63,7 +63,7 @@ module.exports = new CommandBuilder()
           Object.keys(scraperJobs).length * Math.random()
         );
         const scraperJobQuery = Object.keys(scraperJobs)[index];
-        const scraperJobUser = scraperJobs[index];
+        const scraperJobUser = scraperJobs[scraperJobQuery];
         await message.channel.send(
           "I'm busy getting " +
             scraperJobQuery +
