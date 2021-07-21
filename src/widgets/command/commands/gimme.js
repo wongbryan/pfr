@@ -33,6 +33,7 @@ const subreddits = [
 const google = new Scraper({
   puppeteer: {
     headless: true,
+    args: ["--no-sandbox"],
   },
 });
 
