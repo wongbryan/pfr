@@ -56,7 +56,8 @@ module.exports = new CommandBuilder()
     if (searchCache.get(query) == null) {
       await message.channel.send(
         "<:helloeverybunny:837449515559551056> Please wait, I'm getting you your " +
-          query
+          query +
+          " (can take up to a minute if it's your first time searching for this)"
       );
       results = await google.scrape(query, QUERY_LIMIT);
       searchCache.set(query, results);
