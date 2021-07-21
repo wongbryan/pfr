@@ -95,6 +95,7 @@ module.exports = new CommandBuilder()
             message.channel.send(
               results[Math.floor(Math.random() * results.length)].url
             );
+            searchCache.set(query, results);
             delete scraperJobs[query];
           })
           .catch((e) => {
@@ -102,8 +103,10 @@ module.exports = new CommandBuilder()
             delete scraperJobs[query];
           });
       }
-      searchCache.set(query, results);
     } else {
       results = searchCache.get(query);
+      await message.channel.send(
+        results[Math.floor(Math.random() * results.length)].url
+      );
     }
   });
