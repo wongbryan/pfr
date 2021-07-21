@@ -43,8 +43,6 @@ const QUERY_LIMIT = 500;
 
 let scraperJobs = {};
 
-const executeQuery = new Promise((resolve, reject) => {});
-
 module.exports = new CommandBuilder()
   .setAliases(["g", "gimme"])
   .setOwnersOnly(false)
@@ -55,9 +53,45 @@ module.exports = new CommandBuilder()
   .setDisabled(false)
   // eslint-disable-next-line
   .setExecute(async (message, user, args) => {
-    const query = args.join(" ");
+    const query = args.join(" ").toLowerCase();
     let results;
     if (searchCache.get(query) == null) {
+      // If query already in job queue, send busy msg
+      if (scraperJobs[query] != null) {
+        await message.channel.send(
+          "You already asked me for " +
+            query +
+            "! Be patient " +
+            user.username +
+            " 😠"
+        );
+        return;
+      } else {
+        scraperJobs[query] = user.username;
+        await message.channel.send(
+          "<:helloeverybunny:837449515559551056> Please wait, I'm getting you some " +
+            query +
+            " (can take up to a minute if it's your first time searching for this)"
+        );
+        google
+          .scrape(query, QUERY_LIMIT)
+          .then((results) => {
+            const index = Math.floor(Math.random() * results.length);
+            searchCache.set(query, results);
+            message.channel
+              .send(
+                results[index].url != undefined
+                  ? results[index].url
+                  : "Couldn't find an image. Try asking me again."
+              )
+              .then(() => delete scraperJobs[query]);
+          })
+          .catch((e) => {
+            console.log(e);
+            delete scraperJobs[query];
+          });
+      }
+      // If too many jobs, send busy message
       if (Object.keys(scraperJobs).length > 2) {
         const index = Math.floor(
           Object.keys(scraperJobs).length * Math.random()
@@ -73,40 +107,13 @@ module.exports = new CommandBuilder()
         );
         return;
       }
-      if (scraperJobs[query] != null) {
-        await message.channel.send(
-          "You already asked me for " +
-            query +
-            "! Be patient " +
-            user.username +
-            " 😠"
-        );
-        return;
-      } else {
-        scraperJobs[query] = user.username;
-        await message.channel.send(
-          "<:helloeverybunny:837449515559551056> Please wait, I'm getting you your " +
-            query +
-            " (can take up to a minute if it's your first time searching for this)"
-        );
-        google
-          .scrape(query, QUERY_LIMIT)
-          .then((results) => {
-            message.channel.send(
-              results[Math.floor(Math.random() * results.length)].url
-            );
-            searchCache.set(query, results);
-            delete scraperJobs[query];
-          })
-          .catch((e) => {
-            console.log(e);
-            delete scraperJobs[query];
-          });
-      }
     } else {
       results = searchCache.get(query);
+      const index = Math.floor(Math.random() * results.length) + 1;
       await message.channel.send(
-        results[Math.floor(Math.random() * results.length)].url
+        results[index].url != undefined
+          ? results[index].url
+          : "Couldn't find an image. Try asking me again."
       );
     }
   });
