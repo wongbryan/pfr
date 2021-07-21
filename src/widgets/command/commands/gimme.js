@@ -1,4 +1,6 @@
 const CommandBuilder = require("../classes/CommandBuilder");
+const Scraper = require("images-scraper");
+const NodeCache = require("node-cache");
 const fetch = require("node-fetch");
 const { RedditSimple } = require("reddit-simple");
 const FuzzySearch = require("fuzzy-search");
@@ -28,6 +30,16 @@ const subreddits = [
   { name: "gifs", aliases: ["gif", "g"] },
 ];
 
+const google = new Scraper({
+  puppeteer: {
+    headless: false,
+  },
+});
+
+const searchCache = new NodeCache({ stdTTL: 0, checkperiod: 0 });
+
+const QUERY_LIMIT = 500;
+
 module.exports = new CommandBuilder()
   .setAliases(["g", "gimme"])
   .setOwnersOnly(false)
@@ -38,26 +50,15 @@ module.exports = new CommandBuilder()
   .setDisabled(false)
   // eslint-disable-next-line
   .setExecute(async (message, user, args) => {
-    let sr;
-    if (args.length === 0) {
-      sr = subreddits[Math.floor(Math.random() * subreddits.length)]["name"];
+    const query = args.join(" ");
+    let results;
+    if (searchCache.get(query) == null) {
+      results = await google.scrape(query, QUERY_LIMIT);
+      searchCache.set(query, results);
     } else {
-      if (args[0] === "help" || args[0] === "commands") {
-        await message.channel.send(
-          "<:helloeverybunny:837449515559551056>\n\nHere are some subreddits I can give you:\nanimegifs (a, anime)\ngifs(gif, g)\nbadmemes (b, bad),\ndankmemes (dank, d)\nwholesomememes (wholesome, seratonin, dopaine, w)\nkpop (k)\nmildlyinteresting (interesting)\nme_irl (meme, lol, me)\ndataisbeautiful (chart, graph)\nfood (eats, flavor, taste, hungry, hungo)"
-        );
-        return;
-      }
-      const searcher = new FuzzySearch(subreddits, ["name", "aliases"], {
-        caseSensitive: false,
-      });
-      const searchResults = searcher.search(args[0]);
-      sr =
-        searchResults.length > 0
-          ? searchResults[0]["name"]
-          : subreddits[Math.floor(Math.random() * subreddits.length)]["name"];
+      results = searchCache.get(query);
     }
-    const response = await fetch(`https://meme-api.herokuapp.com/gimme/${sr}`);
-    const json = await response.json();
-    await message.channel.send(json.url);
+    await message.channel.send(
+      results[Math.floor(Math.random() * results.length)].url
+    );
   });
