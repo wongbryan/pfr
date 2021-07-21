@@ -56,6 +56,22 @@ module.exports = new CommandBuilder()
     const query = args.join(" ").toLowerCase();
     let results;
     if (searchCache.get(query) == null) {
+      // If too many jobs, send busy message
+      if (Object.keys(scraperJobs).length > 2) {
+        const index = Math.floor(
+          Object.keys(scraperJobs).length * Math.random()
+        );
+        const scraperJobQuery = Object.keys(scraperJobs)[index];
+        const scraperJobUser = scraperJobs[scraperJobQuery];
+        await message.channel.send(
+          "I'm busy getting " +
+            scraperJobQuery +
+            " for " +
+            scraperJobUser +
+            ". Please try again in a few."
+        );
+        return;
+      }
       // If query already in job queue, send busy msg
       if (scraperJobs[query] != null) {
         await message.channel.send(
@@ -90,22 +106,6 @@ module.exports = new CommandBuilder()
             console.log(e);
             delete scraperJobs[query];
           });
-      }
-      // If too many jobs, send busy message
-      if (Object.keys(scraperJobs).length > 2) {
-        const index = Math.floor(
-          Object.keys(scraperJobs).length * Math.random()
-        );
-        const scraperJobQuery = Object.keys(scraperJobs)[index];
-        const scraperJobUser = scraperJobs[scraperJobQuery];
-        await message.channel.send(
-          "I'm busy getting " +
-            scraperJobQuery +
-            " for " +
-            scraperJobUser +
-            ". Please try again in a few."
-        );
-        return;
       }
     } else {
       results = searchCache.get(query);
