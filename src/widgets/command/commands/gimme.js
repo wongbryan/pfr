@@ -39,7 +39,7 @@ const google = new Scraper({
 
 const searchCache = new NodeCache({ stdTTL: 0, checkperiod: 0 });
 
-const QUERY_LIMIT = 300;
+const QUERY_LIMIT = 500;
 
 module.exports = new CommandBuilder()
   .setAliases(["g", "gimme"])
