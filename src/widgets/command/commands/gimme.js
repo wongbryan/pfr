@@ -1,6 +1,6 @@
 const CommandBuilder = require("../classes/CommandBuilder");
 const Scraper = require("images-scraper");
-const NodeCache = require("node-cache");
+const Cache = require("sync-disk-cache");
 const fetch = require("node-fetch");
 const { RedditSimple } = require("reddit-simple");
 const FuzzySearch = require("fuzzy-search");
@@ -37,11 +37,13 @@ const google = new Scraper({
   },
 });
 
-const searchCache = new NodeCache({ stdTTL: 0, checkperiod: 0 });
+const searchCache = new Cache("search-cache");
 
-const QUERY_LIMIT = 500;
+const QUERY_LIMIT = 250;
 
 let scraperJobs = {};
+
+searchCache.clear();
 
 module.exports = new CommandBuilder()
   .setAliases(["g", "gimme"])
@@ -55,7 +57,9 @@ module.exports = new CommandBuilder()
   .setExecute(async (message, user, args) => {
     const query = args.join(" ").toLowerCase();
     let results;
-    if (searchCache.get(query) == null) {
+    console.log("current jobs: ");
+    console.log(scraperJobs);
+    if (!searchCache.has(query)) {
       // If too many jobs, send busy message
       if (Object.keys(scraperJobs).length > 2) {
         const index = Math.floor(
@@ -93,7 +97,7 @@ module.exports = new CommandBuilder()
           .scrape(query, QUERY_LIMIT)
           .then((results) => {
             const index = Math.floor(Math.random() * results.length);
-            searchCache.set(query, results);
+            searchCache.set(query, JSON.stringify(results));
             message.channel
               .send(
                 results[index].url != undefined
@@ -108,7 +112,7 @@ module.exports = new CommandBuilder()
           });
       }
     } else {
-      results = searchCache.get(query);
+      results = JSON.parse(searchCache.get(query).value);
       const index = Math.floor(Math.random() * results.length) + 1;
       await message.channel.send(
         results[index].url != undefined
