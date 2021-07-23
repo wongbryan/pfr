@@ -43,8 +43,6 @@ const QUERY_LIMIT = 250;
 
 let scraperJobs = {};
 
-searchCache.clear();
-
 module.exports = new CommandBuilder()
   .setAliases(["g", "gimme"])
   .setOwnersOnly(false)
